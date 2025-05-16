@@ -29,25 +29,39 @@ export default function App() {
     setLoading(true);
     setOutput('Running...');
 
+    const encodeBase64 = (str) => btoa(unescape(encodeURIComponent(str)));
+    const decodeBase64 = (str) => {
+      if (!str) return null;
+      try {
+        return decodeURIComponent(escape(atob(str)));
+      } catch {
+        return '(Invalid Base64)';
+      }
+    };
+
     try {
       const response = await axios.post(
-        `${JUDGE0_API}/submissions?base64_encoded=false&wait=true`,
+        `${JUDGE0_API}/submissions?base64_encoded=true&wait=true`,
         {
           language_id: languages[language].id,
-          source_code: code,
-          stdin: stdin,
+          source_code: encodeBase64(code),
+          stdin: encodeBase64(stdin),
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'X-RapidAPI-Host': import.meta.env.VITE_HOST_BE,
             'X-Access-Key': import.meta.env.VITE_ACCESS_KEY,
           }
         }
       );
 
       const result = response.data;
-      setOutput(result.stdout || result.stderr || result.compile_output || 'No output.');
+      const outputText = decodeBase64(result.stdout)
+        || decodeBase64(result.stderr)
+        || decodeBase64(result.compile_output)
+        || 'No output.';
+
+      setOutput(outputText);
     } catch (err) {
       console.error(err);
       setOutput('Error running code.');
@@ -55,6 +69,8 @@ export default function App() {
 
     setLoading(false);
   };
+
+
 
   const handleLanguageChange = (e) => {
     const selectedLang = e.target.value;
